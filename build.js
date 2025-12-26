@@ -8,24 +8,26 @@ const {createNewResource, insomniaExportTemplate, directoryContainsQuery} = requ
 
 const kitFilePath = `./builds/storefront-api-learning-kit-insomnia.json`;
 
-const createResources = async (directory = './examples', depth = 0, parentId = 'wrk_1') => {
+const createResources = async (directory = './examples', depth = 0, parentId = 'wrk_1', directoryEntries) => {
   let resources = [];
-  const files = await readdir(directory);
+  const files = directoryEntries ?? await readdir(directory, {withFileTypes: true});
 
-  for (const [index, fileName] of files.entries()) {
+  for (const [index, file] of files.entries()) {
+    if (!file.isDirectory()) { continue; }
+
+    const fileName = file.name;
     const filePath = path.join(directory, fileName);
     let resource;
 
-    // We only care about directories
     const stats = await stat(filePath);
-    if (!stats.isDirectory()) { continue; }
+    const childEntries = await readdir(filePath, {withFileTypes: true});
 
     // Create an _id for each resource
     const _id = `${parentId}_fld_${depth}_${index}`;
     const resourceDetails = {fileName, filePath, _id, parentId, metaSortKey: index, stats};
 
     // If directory contains .graphql file, create a request
-    if (await directoryContainsQuery(filePath)) {
+    if (await directoryContainsQuery(filePath, childEntries)) {
       resource = await createNewResource({_type: 'request', ...resourceDetails});
       resources.push(resource);
       continue;
@@ -34,7 +36,7 @@ const createResources = async (directory = './examples', depth = 0, parentId = '
     // Otherwise, create a request group and look inside the folder
     resource = await createNewResource({_type: 'request_group', ...resourceDetails});
     resources.push(resource);
-    resources = resources.concat(await createResources(filePath, depth + 1, _id));
+    resources = resources.concat(await createResources(filePath, depth + 1, _id, childEntries));
   }
 
   return resources;
@@ -46,4 +48,3 @@ const createResources = async (directory = './examples', depth = 0, parentId = '
   await writeFile(kitFilePath, JSON.stringify(insomniaExportTemplate));
   console.log('Insomnia collection has been exported to', kitFilePath);
 })();
-

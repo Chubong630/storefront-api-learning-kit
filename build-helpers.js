@@ -5,9 +5,9 @@ const capitalize = (string) => {
   return string[0].toUpperCase() + string.slice(1);
 };
 
-const directoryContainsQuery = async (directory) => {
-  const files = await readdir(directory);
-  return files.includes('query.graphql');
+const directoryContainsQuery = async (directory, files) => {
+  const entries = files ?? await readdir(directory, {withFileTypes: true});
+  return entries.some((file) => file.isFile() && file.name === 'query.graphql');
 };
 
 const createNewResource = async ({_type, fileName, parentId, filePath, _id, metaSortKey, stats}) => {
